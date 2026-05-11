@@ -1,0 +1,15 @@
+# video
+*.mp4
+
+# python
+__pycache__/
+*.pyc
+
+# virtual environments
+venv/
+env/
+tennis_env/
+tf-env/
+
+# OS files
+.DS_Store
