@@ -1,5 +1,5 @@
 """
-Run shot recognition model on  video.
+Infer shot recognition model on video.
 """
 
 import io
@@ -216,17 +216,17 @@ class ShotCounter:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("video")
-    parser.add_argument("model")
-    parser.add_argument("--out", default="output.mp4")
-    parser.add_argument("--show", action="store_true")
-    parser.add_argument("--left-handed", action="store_true")
+    parser.add_argument("--video_path")
+    parser.add_argument("--model_path")
+    parser.add_argument("--output_video")
+    parser.add_argument("--show")
+    
 
     args = parser.parse_args()
 
-    model = load_weights(build_model(), args.model)
+    model = load_weights(build_model(), args.model_path)
 
-    cap = cv2.VideoCapture(args.video)
+    cap = cv2.VideoCapture(args.video_path)
 
     ret, frame = cap.read()
 
@@ -242,7 +242,7 @@ def main():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     writer = cv2.VideoWriter(
-        args.out,
+        args.output_video,
         cv2.VideoWriter_fourcc(*"mp4v"),
         fps,
         (width, height),
@@ -273,9 +273,7 @@ def main():
 
         features = pose.keypoints_with_scores.reshape(17, 3)
 
-        if args.left_handed:
-            features[:, 1] = 1 - features[:, 1]
-
+        
         confident = features[features[:, 2] > 0][:, 0:2].flatten()
 
         confident = confident[:INPUT_DIM]
@@ -318,7 +316,7 @@ def main():
     cv2.destroyAllWindows()
 
     print("Shot counts:", counter.counts)
-    print("Saved video:", args.out)
+    print("Saved video:", args.output_video)
 
 
 if __name__ == "__main__":

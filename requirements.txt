@@ -9,7 +9,7 @@ ultralytics
 supervision
 tabulate
 keras
-tensorflow-macos==2.16.2
+tensorflow-macos==2.15.0
 tensorflow-metal==1.1.0
 pandas==2.2.2
 
