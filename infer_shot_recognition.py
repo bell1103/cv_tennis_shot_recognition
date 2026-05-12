@@ -1,0 +1,325 @@
+"""
+Run shot recognition model on  video.
+"""
+
+import io
+import zipfile
+import argparse
+
+import cv2
+import h5py
+import numpy as np
+from tensorflow import keras
+
+from extract_human_pose import HumanPoseExtractor
+
+
+CLASSES = [
+    "backhand",
+    "backhand-volley",
+    "forehand",
+    "forehand-volley",
+    "neutral",
+    "serve",
+]
+
+SHOT_COLORS = {
+    "backhand": (0, 180, 255),
+    "backhand-volley": (0, 100, 200),
+    "forehand": (0, 255, 180),
+    "forehand-volley": (0, 200, 100),
+    "serve": (255, 180, 0),
+    "neutral": (160, 160, 160),
+}
+
+INPUT_DIM = 26
+
+
+def build_model():
+    return keras.Sequential([
+        keras.layers.Input(shape=(INPUT_DIM,)),
+        keras.layers.Dense(16, activation="relu"),
+        keras.layers.Dense(8, activation="relu"),
+        keras.layers.Dense(8, activation="relu"),
+        keras.layers.Dense(6, activation="softmax"),
+    ])
+
+
+def load_weights(model, path):
+    with zipfile.ZipFile(path, "r") as z:
+        with z.open("model.weights.h5") as f:
+            h5_bytes = io.BytesIO(f.read())
+
+    with h5py.File(h5_bytes, "r") as f:
+        weights = []
+
+        for layer in ["dense", "dense_1", "dense_2", "dense_3"]:
+            weights.append(f[f"layers/{layer}/vars/0"][()])
+            weights.append(f[f"layers/{layer}/vars/1"][()])
+
+    model.set_weights(weights)
+    return model
+
+
+class ShotCounter:
+    MIN_FRAMES_BETWEEN = 60
+    THRESHOLD = 0.90
+
+    def __init__(self):
+        self.counts = {c: 0 for c in CLASSES if c != "neutral"}
+        self.current_shot = "neutral"
+        self.frames_since_last = self.MIN_FRAMES_BETWEEN
+
+    def update(self, probs):
+        idx = np.argmax(probs)
+
+        shot = CLASSES[idx]
+        confidence = probs[idx]
+
+        if (
+            shot != "neutral"
+            and confidence > self.THRESHOLD
+            and self.frames_since_last > self.MIN_FRAMES_BETWEEN
+        ):
+            self.counts[shot] += 1
+            self.current_shot = shot
+            self.frames_since_last = 0
+
+        elif self.frames_since_last > 5:
+            self.current_shot = "neutral"
+
+        self.frames_since_last += 1
+
+    def draw(self, frame, frame_id, probs):
+        h, w = frame.shape[:2]
+
+        # left panel
+        panel_w = 320
+        panel_h = 210
+
+        x1 = 10
+        y1 = h - panel_h - 10
+        x2 = x1 + panel_w
+        y2 = h - 10
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), -1)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 2)
+
+        cv2.putText(
+            frame,
+            f"Frame: {frame_id}",
+            (x1 + 15, y1 + 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 0, 0),
+            2,
+        )
+
+        color = SHOT_COLORS[self.current_shot]
+
+        cv2.putText(
+            frame,
+            self.current_shot.upper(),
+            (x1 + 15, y1 + 70),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.1,
+            color,
+            3,
+        )
+
+        y = y1 + 110
+
+        for shot, count in self.counts.items():
+            cv2.putText(
+                frame,
+                f"{shot}: {count}",
+                (x1 + 15, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                SHOT_COLORS[shot],
+                2,
+            )
+            y += 28
+
+        # probability bars
+        labels = ["BH", "BHV", "FH", "FHV", "NT", "SV"]
+
+        bar_w = 24
+        bar_h = 100
+        spacing = 32
+
+        total_w = len(CLASSES) * spacing
+
+        bx0 = w - total_w - 25
+        by0 = 35
+
+        cv2.rectangle(
+            frame,
+            (bx0 - 12, by0 - 12),
+            (bx0 + total_w + 12, by0 + bar_h + 40),
+            (255, 255, 255),
+            -1,
+        )
+
+        cv2.rectangle(
+            frame,
+            (bx0 - 12, by0 - 12),
+            (bx0 + total_w + 12, by0 + bar_h + 40),
+            (0, 0, 0),
+            2,
+        )
+
+        for i, (label, shot) in enumerate(zip(labels, CLASSES)):
+            p = float(probs[i])
+
+            bx = bx0 + i * spacing
+
+            cv2.rectangle(
+                frame,
+                (bx, by0),
+                (bx + bar_w, by0 + bar_h),
+                (220, 220, 220),
+                -1,
+            )
+
+            fill = int(bar_h * p)
+
+            if fill > 0:
+                cv2.rectangle(
+                    frame,
+                    (bx, by0 + bar_h - fill),
+                    (bx + bar_w, by0 + bar_h),
+                    SHOT_COLORS[shot],
+                    -1,
+                )
+
+            cv2.rectangle(
+                frame,
+                (bx, by0),
+                (bx + bar_w, by0 + bar_h),
+                (0, 0, 0),
+                1,
+            )
+
+            cv2.putText(
+                frame,
+                label,
+                (bx - 1, by0 + bar_h + 18),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.38,
+                (0, 0, 0),
+                1,
+            )
+
+        return frame
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("video")
+    parser.add_argument("model")
+    parser.add_argument("--out", default="output.mp4")
+    parser.add_argument("--show", action="store_true")
+    parser.add_argument("--left-handed", action="store_true")
+
+    args = parser.parse_args()
+
+    model = load_weights(build_model(), args.model)
+
+    cap = cv2.VideoCapture(args.video)
+
+    ret, frame = cap.read()
+
+    if not ret:
+        print("Could not read video")
+        return
+
+    pose = HumanPoseExtractor(frame.shape)
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    writer = cv2.VideoWriter(
+        args.out,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (width, height),
+    )
+
+    counter = ShotCounter()
+
+    frame_id = 0
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        if not ret:
+            break
+
+        frame_id += 1
+
+        pose.extract(frame)
+
+        pose.discard([
+            "left_eye",
+            "right_eye",
+            "left_ear",
+            "right_ear",
+        ])
+
+        features = pose.keypoints_with_scores.reshape(17, 3)
+
+        if args.left_handed:
+            features[:, 1] = 1 - features[:, 1]
+
+        confident = features[features[:, 2] > 0][:, 0:2].flatten()
+
+        confident = confident[:INPUT_DIM]
+
+        if len(confident) < INPUT_DIM:
+            confident = np.pad(
+                confident,
+                (0, INPUT_DIM - len(confident)),
+            )
+
+        inp = confident.reshape(1, INPUT_DIM).astype(np.float32)
+
+        probs = model(inp, training=False).numpy()[0]
+
+        counter.update(probs)
+
+        pose.draw_results_frame(frame)
+
+        if (
+            counter.frames_since_last < 30
+            and counter.current_shot != "neutral"
+        ):
+            pose.roi.draw_shot(frame, counter.current_shot)
+
+        frame = counter.draw(frame, frame_id, probs)
+
+        writer.write(frame)
+
+        pose.roi.update(pose.keypoints_pixels_frame)
+
+        if args.show:
+            cv2.imshow("Shot Recognition", frame)
+
+            if cv2.waitKey(1) & 0xFF == 27:
+                break
+
+    cap.release()
+    writer.release()
+
+    cv2.destroyAllWindows()
+
+    print("Shot counts:", counter.counts)
+    print("Saved video:", args.out)
+
+
+if __name__ == "__main__":
+    main()
