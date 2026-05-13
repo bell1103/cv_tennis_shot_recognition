@@ -1,3 +1,4 @@
+# Reference from https://github.com/antoinekeller/tennis_shot_recognition/blob/master/track_and_classify_with_rnn.py
 """
 Infer shot recognition model on video.
 """
@@ -62,6 +63,7 @@ def load_weights(model, path):
 
 
 class ShotCounter:
+    # usually two 2 between each shot from one player 
     MIN_FRAMES_BETWEEN = 60
     THRESHOLD = 0.90
 
@@ -92,125 +94,39 @@ class ShotCounter:
 
     def draw(self, frame, frame_id, probs):
         h, w = frame.shape[:2]
-
-        # left panel
         panel_w = 320
-        panel_h = 210
-
+        panel_h = 260
         x1 = 10
         y1 = h - panel_h - 10
         x2 = x1 + panel_w
         y2 = h - 10
-
         cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), -1)
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 2)
-
-        cv2.putText(
-            frame,
-            f"Frame: {frame_id}",
-            (x1 + 15, y1 + 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 0, 0),
-            2,
-        )
-
+        cv2.putText(frame, f"Frame: {frame_id}", (x1 + 15, y1 + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
         color = SHOT_COLORS[self.current_shot]
-
-        cv2.putText(
-            frame,
-            self.current_shot.upper(),
-            (x1 + 15, y1 + 70),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.1,
-            color,
-            3,
-        )
-
+        cv2.putText(frame, self.current_shot.upper(), (x1 + 15, y1 + 70), cv2.FONT_HERSHEY_SIMPLEX, 1.1, color, 3)
         y = y1 + 110
-
         for shot, count in self.counts.items():
-            cv2.putText(
-                frame,
-                f"{shot}: {count}",
-                (x1 + 15, y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                SHOT_COLORS[shot],
-                2,
-            )
+            cv2.putText(frame, f"{shot}: {count}", (x1 + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, SHOT_COLORS[shot], 2)
             y += 28
-
-        # probability bars
         labels = ["BH", "BHV", "FH", "FHV", "NT", "SV"]
-
         bar_w = 24
         bar_h = 100
         spacing = 32
-
         total_w = len(CLASSES) * spacing
-
         bx0 = w - total_w - 25
         by0 = 35
-
-        cv2.rectangle(
-            frame,
-            (bx0 - 12, by0 - 12),
-            (bx0 + total_w + 12, by0 + bar_h + 40),
-            (255, 255, 255),
-            -1,
-        )
-
-        cv2.rectangle(
-            frame,
-            (bx0 - 12, by0 - 12),
-            (bx0 + total_w + 12, by0 + bar_h + 40),
-            (0, 0, 0),
-            2,
-        )
-
+        cv2.rectangle(frame, (bx0 - 12, by0 - 12), (bx0 + total_w + 12, by0 + bar_h + 55), (255, 255, 255), -1)
+        cv2.rectangle(frame, (bx0 - 12, by0 - 12), (bx0 + total_w + 12, by0 + bar_h + 55), (0, 0, 0), 2)
         for i, (label, shot) in enumerate(zip(labels, CLASSES)):
             p = float(probs[i])
-
             bx = bx0 + i * spacing
-
-            cv2.rectangle(
-                frame,
-                (bx, by0),
-                (bx + bar_w, by0 + bar_h),
-                (220, 220, 220),
-                -1,
-            )
-
+            cv2.rectangle(frame, (bx, by0), (bx + bar_w, by0 + bar_h), (220, 220, 220), -1)
             fill = int(bar_h * p)
-
             if fill > 0:
-                cv2.rectangle(
-                    frame,
-                    (bx, by0 + bar_h - fill),
-                    (bx + bar_w, by0 + bar_h),
-                    SHOT_COLORS[shot],
-                    -1,
-                )
-
-            cv2.rectangle(
-                frame,
-                (bx, by0),
-                (bx + bar_w, by0 + bar_h),
-                (0, 0, 0),
-                1,
-            )
-
-            cv2.putText(
-                frame,
-                label,
-                (bx - 1, by0 + bar_h + 18),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.38,
-                (0, 0, 0),
-                1,
-            )
-
+                cv2.rectangle(frame, (bx, by0 + bar_h - fill), (bx + bar_w, by0 + bar_h), SHOT_COLORS[shot], -1)
+            cv2.rectangle(frame, (bx, by0), (bx + bar_w, by0 + bar_h), (0, 0, 0), 1)
+            cv2.putText(frame, label, (bx - 1, by0 + bar_h + 22), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 0, 0), 1)
         return frame
 
 
@@ -219,7 +135,7 @@ def main():
     parser.add_argument("--video_path")
     parser.add_argument("--model_path")
     parser.add_argument("--output_video")
-    parser.add_argument("--show")
+   
     
 
     args = parser.parse_args()
@@ -306,11 +222,6 @@ def main():
 
         pose.roi.update(pose.keypoints_pixels_frame)
 
-        if args.show:
-            cv2.imshow("Shot Recognition", frame)
-
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
 
     cap.release()
     writer.release()

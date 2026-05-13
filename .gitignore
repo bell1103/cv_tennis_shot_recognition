@@ -1,6 +1,6 @@
 # video
 *.mp4
-*.json
+# *.json
 
 # python
 __pycache__/
