@@ -53,7 +53,6 @@ When running the video trimming process, you will be promted to lable court keyp
 
 # Result
 
-## Model Performance Discussion
 
 As you can be observed, our shot recognition model’s performance on the trimmed video recordings is relatively poor. One key reason for this is a perspectiv shift between the training data and the inference data.
 
