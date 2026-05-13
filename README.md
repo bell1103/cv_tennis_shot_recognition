@@ -23,8 +23,7 @@ Our model was trained to recognize the following shot types:
 - backhand_volley 
 - neatral (when not hitting a shot)
 
-# Work Flow in Jupiter Notebook
-match recording &rarr auto trimming pipeline (user keypoint label) &rarr shortened video &rarr human pose extraction &rarr shot recognition model &rarr shortened annotated video
+
 
 # Setup and Preperation
 
