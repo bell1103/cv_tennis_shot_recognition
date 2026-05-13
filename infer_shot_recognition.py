@@ -6,7 +6,6 @@ Infer shot recognition model on video.
 import io
 import zipfile
 import argparse
-
 import cv2
 import h5py
 import numpy as np

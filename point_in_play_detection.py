@@ -188,9 +188,9 @@ def detect_points_in_play(ball_positions, player_boxes, bounces, target_top, tar
                         if not ok:
                             print(f"    → server_and_returner_position_ok returned False")
                 else:
-                    print(f"  ❌ Not enough player boxes to evaluate at frame {frame}")
+                    print(f" Not enough player boxes to evaluate at frame {frame}")
             else:
-               print(f"  → Skipping frame {frame} - bounce not near any serve target")
+               print(f" Skipping frame {frame} - bounce not near any serve target")
 
         # Handle point continuation and ending
         if point_in_play:
