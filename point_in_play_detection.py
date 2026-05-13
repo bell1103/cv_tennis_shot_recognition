@@ -69,7 +69,7 @@ def server_and_returner_position_ok (bboxes, target_pos, returner_left, returner
             
             return result
         else:
-            print(f"      ❌ Server {srv_idx} not in correct position")
+            print(f"Server {srv_idx} not in correct position")
     
     print(f"    DEBUG: No valid server position found")
     return False
@@ -143,7 +143,7 @@ def detect_points_in_play(ball_positions, player_boxes, bounces, target_top, tar
                 returner_left = court_data["bottom_left_single"] 
                 returner_right = court_data["bottom_right_single"]
             elif dist_to_bottom <= target_threshold_bottom:
-                print(f"  ✓ Bounce near BOTTOM serve target at frame {frame}")
+                print(f" Bounce near BOTTOM serve target at frame {frame}")
                 target_pos, target_label = target_bottom, "bottom"
                 server_threshold = target_threshold_bottom
                 returner_threshold = target_threshold_top
@@ -182,7 +182,7 @@ def detect_points_in_play(ball_positions, player_boxes, bounces, target_top, tar
                         missing_players = 0
                         print(f"*** Point START at frame {frame} ({target_label} side) ***")
                     else:
-                        print(f"  ❌ Players not in correct positions at frame {frame}")
+                        print(f" Players not in correct positions at frame {frame}")
                         if not players_present:
                             print(f"    → players_present is False")
                         if not ok:
