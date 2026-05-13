@@ -71,4 +71,4 @@ To infer our model on a video consitent with the training dataset perspective, y
   --model_path weights.keras \
   --output_video output/sample_complete.mp4
 ```
-The result of inference on this video has high accuracy which shows that our model's performs well on data consitent with its training dataset. 
+The result of inference on this video has high accuracy which shows that our model performs well on data consitent with its training dataset. 

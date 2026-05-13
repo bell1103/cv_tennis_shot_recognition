@@ -35,7 +35,7 @@ SHOT_COLORS = {
 
 INPUT_DIM = 26
 
-
+# build architecture of the model
 def build_model():
     return keras.Sequential([
         keras.layers.Input(shape=(INPUT_DIM,)),
@@ -45,7 +45,7 @@ def build_model():
         keras.layers.Dense(6, activation="softmax"),
     ])
 
-
+# extract model weights
 def load_weights(model, path):
     with zipfile.ZipFile(path, "r") as z:
         with z.open("model.weights.h5") as f:
@@ -182,6 +182,7 @@ def main():
 
         pose.extract(frame)
 
+        # non related facial key points
         pose.discard([
             "left_eye",
             "right_eye",
@@ -196,6 +197,7 @@ def main():
 
         confident = confident[:INPUT_DIM]
 
+        # only count shots above confidence threshhold 
         if len(confident) < INPUT_DIM:
             confident = np.pad(
                 confident,
